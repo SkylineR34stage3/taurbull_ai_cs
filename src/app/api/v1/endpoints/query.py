@@ -2,6 +2,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from src.app.core.triage import route_query
+
 # Explanation: Create an APIRouter instance. We can add tags for OpenAPI documentation grouping.
 router = APIRouter(tags=["Query"])
 
@@ -28,16 +30,17 @@ class QueryResponse(BaseModel):
 # It specifies that the response will match the QueryResponse model (for documentation and validation).
 @router.post("/", response_model=QueryResponse)
 async def handle_query(payload: QueryRequest):
-    # Explanation: 'payload' will be an instance of QueryRequest, validated by FastAPI/Pydantic.
-    # We access the user's query via payload.user_query.
-    # TODO: Replace this dummy logic with actual call to Triage/Agent system later.
-    print(f"Received query: {payload.user_query}") # Log to server console
+    print(f"[API Endpoint] Received query: {payload.user_query}")
+    # --- Call the triage function ---
+    # Explanation: Instead of generating a dummy response directly,
+    # we now call our asynchronous 'route_query' function.
+    # We use 'await' because route_query is an 'async def' function.
+    # This pauses handle_query until route_query completes and returns its result.
+    triage_result = await route_query(user_query=payload.user_query)
 
-    dummy_ai_answer = f"I received your query about '{payload.user_query}'. I am still under development."
+    print(f"[API Endpoint] Triage result: {triage_result}")
 
-    # Explanation: Return a dictionary matching the QueryResponse model structure.
-    # FastAPI will automatically convert this to JSON.
     return {
         "original_query": payload.user_query,
-        "ai_response": dummy_ai_answer
+        "ai_response": triage_result
     }
