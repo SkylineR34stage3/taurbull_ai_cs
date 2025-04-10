@@ -48,7 +48,7 @@ Thumbs.db
 *.sublime-workspace
 
 # Secrets / Credentials file (EXAMPLE - adjust if needed later)
-# .env
+.env
 # config.ini
 
 # IPython Notebook checkpoints
