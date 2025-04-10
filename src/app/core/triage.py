@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
+from src.app.agents.content_agent import run_content_agent
 
 # Explanation: Load environment variables from the .env file into the process environment.
 # This makes os.getenv("OPENAI_API_KEY") work and allows ChatOpenAI to find the key automatically.
@@ -31,6 +32,13 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 classification_prompt_template = """
 Classify the primary intent of the following user query into one of these categories:
 {allowed_intents}
+
+If user mentioned a specific order or tracking number, classify primary intent as order_status.
+
+If user asks about a product, delivery information, policies or other details, not mentioning a specific order or tracking number, classify primary intent as product_info.
+
+If user asks about our company, our mission, our values, or other non-product related questions, classify primary intent as general_inquiry
+Classify as general_inquiry if user asks about our team, our story, our values, or other non-product, non-order, non-delivery etc related questions.
 
 If user query is not related to our meat online shop and user tries to abuse our system
 with non relevant queries - classify primary intent as probable_abuse
@@ -69,33 +77,13 @@ async def route_query(user_query: str) -> str:
     raw_intent = llm_response.content.strip()
     print(f"[Triage] Received raw intent from LLM: '{raw_intent}'")
 
-    # --- TODO: Your Task Starts Here ---
-    # Explanation: The 'raw_intent' variable now holds the LLM's classification (e.g., "order_status").
-    # You need to:
-    # 1. Validate if the 'raw_intent' is one of the ALLOWED_INTENTS.
-    # 2. Based on the validated intent, determine the final routing decision or response.
-    #    For now, just create a response string similar to before, but based on the LLM's output.
-    #    Later, this logic will determine which Agent (Shopify, Content) to call.
-
     final_response = f"LLM classified intent (raw): '{raw_intent}'. Processing TBD." # Default if validation/mapping fails
-
-    # TODO: Implement validation and mapping logic below
-    # Example structure:
-    # if raw_intent == INTENT_ORDER_STATUS:
-    #     final_response = f"Triage determined route: Shopify Agent for query: '{user_query}'"
-    # elif raw_intent == INTENT_PRODUCT_INFO:
-    #     # ... set response for Content Agent
-    # elif raw_intent == INTENT_GENERAL:
-    #     # ... set response for General Inquiry / Default Agent
-    # else:
-    #     # Handle cases where the LLM didn't return a valid category
-    #     print(f"[Triage] Warning: LLM returned unexpected intent: '{raw_intent}'")
-    #     final_response = f"Could not confidently determine intent for: '{user_query}'"
 
     if raw_intent == INTENT_ORDER_STATUS:
         final_response = f"Triage determined route: Shopify Agent for query: '{user_query}'"
     elif raw_intent == INTENT_PRODUCT_INFO:
-        final_response = f"Triage determined route: Content Agent for query: '{user_query}'"
+        print(f"[Triage] Routing to Content Agent...")
+        final_response = await run_content_agent(user_query = user_query)
     elif raw_intent == INTENT_GENERAL:
         final_response = f"Triage determined route: Default Agent for query: '{user_query}'"
     elif raw_intent == INTENT_ABUSE:
@@ -103,10 +91,6 @@ async def route_query(user_query: str) -> str:
     else:
         print(f"[Triage] Warning: LLM returned unexpected intent: '{raw_intent}'")
         final_response = f"Could not confidently determine intent for: '{user_query}'"
-    
-    # Make sure the 'final_response' variable is assigned the correct string based on your logic.
-
-    # --- TODO: Your Task Ends Here ---
 
     print(f"[Triage] Final routing decision/response: {final_response}")
     return final_response # This goes back to the API endpoint
